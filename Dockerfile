@@ -3,7 +3,7 @@ FROM buildpack-deps:stretch
 RUN sed -i 's/archive.ubuntu.com/mirror.aarnet.edu.au\/pub\/ubuntu\/archive/g' /etc/apt/sources.list
 
 RUN rm -rf /var/lib/apt/lists/*
-RUN apt-get -y update && apt-get install -y libmicrohttpd-dev \
+RUN apt-get -y update && apt-get install -y \
     libjansson-dev \
     libnice-dev \
     libssl-dev \
@@ -18,6 +18,7 @@ RUN apt-get -y update && apt-get install -y libmicrohttpd-dev \
     pkg-config \
     gengetopt \
     libtool \
+    autopoint \
     automake \
     build-essential \
     subversion \
@@ -25,8 +26,25 @@ RUN apt-get -y update && apt-get install -y libmicrohttpd-dev \
     cmake \
     unzip \
     zip \
-    lsof wget vim sudo rsync cron mysql-client openssh-server supervisor locate gstreamer1.0-tools mplayer valgrind certbot python-certbot-apache dnsutils
+    lsof wget vim sudo rsync cron mysql-client openssh-server supervisor locate mplayer valgrind certbot python-certbot-apache dnsutils tcpdump gstreamer1.0-tools
 
+
+# RUN apt-get install -y libx264-dev libmatroska-dev libopus-dev libssl1.0-dev libtheora-dev libogg-dev python3-pip flex bison libsoup2.4-dev libjpeg-dev nasm libvpx-dev
+# RUN sudo pip3 install meson ninja
+# RUN git clone https://gitlab.freedesktop.org/gstreamer/gst-build
+# WORKDIR /gst-build
+# RUN git log -n 1 HEAD
+# RUN git checkout 1016bf23
+# RUN git log -n 1 HEAD
+# RUN mkdir builddir
+# # RUN meson builddir
+# RUN meson builddir
+# RUN ninja -C builddir update
+# RUN ninja install -C builddir
+# RUN ldconfig
+# RUN which gst-launch-1.0
+# RUN ldd /usr/local/bin/gst-launch-1.0
+# RUN gst-launch-1.0
 
 
 # FFmpeg build section
@@ -58,7 +76,7 @@ RUN VPX="v1.8.1" && cd ~/ffmpeg_sources && \
 
 
 RUN OPUS="1.3" && cd ~/ffmpeg_sources && \
-    wget http://downloads.xiph.org/releases/opus/opus-$OPUS.tar.gz && \
+    wget https://archive.mozilla.org/pub/opus/opus-$OPUS.tar.gz && \
     tar xzvf opus-$OPUS.tar.gz && \
     cd opus-$OPUS && \
     ./configure --help && \
@@ -226,7 +244,7 @@ RUN SRTP="2.2.0" && apt-get remove -y libsrtp0-dev && wget https://github.com/ci
 
 
 
-# 8 March, 2019 1 commit 67807a17ce983a860804d7732aaf7d2fb56150ba
+# March, 2019 1 commit 67807a17ce983a860804d7732aaf7d2fb56150ba
 RUN apt-get remove -y libnice-dev libnice10 && \
     echo "deb http://deb.debian.org/debian  stretch-backports main" >> /etc/apt/sources.list && \
     apt-get  update && \
@@ -265,11 +283,18 @@ RUN cd / && git clone https://github.com/sctplab/usrsctp.git && cd /usrsctp && \
     ./configure && \
     make && make install
 
+WORKDIR /tmp
+RUN git clone https://git.gnunet.org/libmicrohttpd.git
+WORKDIR /tmp/libmicrohttpd
+RUN git checkout v0.9.60
+RUN autoreconf -fi
+RUN ./configure
+RUN make && make install
 
 
 
 RUN cd / && git clone https://github.com/meetecho/janus-gateway.git && cd /janus-gateway && \
-    git checkout refs/tags/v0.9.2 && \
+    git checkout refs/tags/v0.10.4 && \
     sh autogen.sh &&  \
     PKG_CONFIG_PATH="$HOME/ffmpeg_build/lib/pkgconfig" ./configure \
     --enable-post-processing \
@@ -285,6 +310,8 @@ RUN cd / && git clone https://github.com/meetecho/janus-gateway.git && cd /janus
     --enable-plugin-videocall \
     --enable-plugin-voicemail \
     --enable-plugin-textroom \
+    --enable-rest \
+    --enable-turn-rest-api \
     --enable-plugin-audiobridge \
     --enable-plugin-nosip \
     --enable-all-handlers && \
@@ -294,7 +321,7 @@ COPY nginx.conf /usr/local/nginx/nginx.conf
 
 
 ENV NVM_VERSION v0.35.3
-ENV NODE_VERSION v10.16.0
+ENV NODE_VERSION v12.18.3
 ENV NVM_DIR /usr/local/nvm
 RUN mkdir $NVM_DIR
 RUN curl -o- https://raw.githubusercontent.com/creationix/nvm/$NVM_VERSION/install.sh | bash
